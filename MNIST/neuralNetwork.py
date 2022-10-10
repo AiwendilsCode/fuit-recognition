@@ -8,6 +8,9 @@ import torchvision.transforms as transforms
 import customDataset as myData
 import torch.onnx as onnx
 import cv2 as cv
+import matplotlib.pyplot as plt
+import sys
+import torchvision
 
 # fully connected network
 class NN(nn.Module):
@@ -20,7 +23,7 @@ class NN(nn.Module):
     def forward(self, x):
         x = functional.relu(self.fc1(x))
         x = functional.relu(self.fc2(x))
-        x = functional.relu(self.fc3(x))
+        x = functional.softmax(self.fc3(x), dim = 1)
         return x
 
 testAccuracy = 0.0
@@ -87,9 +90,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # global variables
 inputSize = 784
 numClasses = 10
-learnRate = 0.0005
+learnRate = 0.0008
 batchSize = 64
-numEpochs = 4
+numEpochs = 8
 
 # datasets and data loaders
 # trainDataset = datasets.MNIST(root = 'MNIST/dataset/', train = True, transform = transforms.ToTensor(), download = True)
@@ -103,6 +106,14 @@ trainLoader = DataLoader(trainDataset, batchSize, shuffle = True)
 
 testDataset = myData.CustomDataset("MNIST/csvData/mnist_test.csv", train = False)
 testLoader = DataLoader(testDataset, batchSize, shuffle = True)
+
+examples = iter(testLoader)
+example_data, example_targets = examples.next()
+
+for i in range(6):
+    plt.subplot(2, 3, i + 1)
+    plt.imshow(example_data[i][0], cmap='gray')
+plt.show()
 
 # init model
 model = NN(inputSize, numClasses).to(device)
@@ -128,6 +139,11 @@ for epoch in range(numEpochs):
         scores = model(data)
         loss = criterium(scores, targets)
 
+        print(scores.size())
+        print(targets.size())
+
+        exit()
+
         # backward
         optimizer.zero_grad()
         loss.backward()
@@ -138,5 +154,6 @@ for epoch in range(numEpochs):
     checkAccuracy(trainLoader, model)
     testAccuracy = checkAccuracy(testLoader, model)
 
-if testAccuracy.item() >= 95:
-    Convert_ONNX(model, 784)
+    if testAccuracy.item() >= 95:
+        Convert_ONNX(model, 784)
+        break
